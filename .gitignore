@@ -6,3 +6,4 @@ data/
 .dvc/cache
 .env
 .ipynb_checkpoints
+requirements.in
