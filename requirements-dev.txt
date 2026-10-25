@@ -50,6 +50,8 @@ ruff==0.17.2
     # via -r requirements-dev.in
 setuptools==84.2.1
     # via pip-tools
+uv==0.13.5
+    # via -r requirements-dev.in
 virtualenv==21.14.5
     # via pre-commit
 wheel==0.48.0

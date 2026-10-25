@@ -1,4 +1,4 @@
+uv
 pre-commit
 ruff
 pytest
-pip-tools
