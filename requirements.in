@@ -1,0 +1,11 @@
+# requirements.in
+--extra-index-url https://download.pytorch.org/whl/cpu
+pydicom
+numpy
+pandas
+matplotlib
+torch==2.14.1
+torchvision==0.29.1
+scikit-learn
+pillow
+PyYAML
