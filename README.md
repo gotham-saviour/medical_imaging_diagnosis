@@ -8,7 +8,7 @@ A platform where chest X-ray scans are uploaded. A classifier flags findings on 
 - Project Disk (D:/) = 86.7 GB Free
 - RAM = 8 GB Total(WSL Visible: 3.8Gi  Swap: 4.0Gi)
 - GPU = Not Available (Kaggle Tesla T4 for Training)
-![kaggle](./images/kaggle_gpu_check.png)
+ ![kaggle](./images/kaggle_gpu_check.png)
 
 
 ## Installation:
@@ -18,9 +18,9 @@ Execute the following commands inside your WSL terminal
  1. **Clone the Repository**:
  ```bash
  mkdir -p ~/projects
- cd ~/projects
- git clone https://github.com/gotham-saviour/medical_imaging_diagnosis.git
- cd medical_imaging_diagnosis
+cd ~/projects
+git clone https://github.com/gotham-saviour/medical_imaging_diagnosis.git
+cd medical_imaging_diagnosis
  ```
 
  2. **Set Up Virtual Environments**
