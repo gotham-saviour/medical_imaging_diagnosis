@@ -1,4 +1,5 @@
+-r requirements.txt
+uv
 pre-commit
 ruff
 pytest
-pip-tools
