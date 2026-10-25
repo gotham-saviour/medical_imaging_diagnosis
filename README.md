@@ -16,7 +16,7 @@ Execute the following commands inside your WSL terminal
 
  1. **Clone the Repository**:
  ```bash
- cd ~/projects
+ mkdir -p ~/projects
  git clone https://github.com/gotham-saviour/medical_imaging_diagnosis.git
  cd medical_imaging_diagnosis
  ```
@@ -31,7 +31,7 @@ source .venv/bin/activate
 3. **Installing the Dependencies**
 
 ```bash
-uv pip sync requirements.txt requirements-dev.txt
+pip install requirements-dev.txt
 ```
 
 4. **Install the Pre-Commit Git Hooks**
@@ -40,7 +40,7 @@ uv pip sync requirements.txt requirements-dev.txt
 pre-commit install
 ```
 
-5.**Run the Test Suite to verify Setup**
+5. **Run the Test Suite to verify Setup**
 
 ```bash
 pytest

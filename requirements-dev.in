@@ -1,3 +1,4 @@
+-r requirements.txt
 uv
 pre-commit
 ruff
