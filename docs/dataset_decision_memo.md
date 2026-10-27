@@ -1,6 +1,7 @@
 # Dataset Decision Memo: Medical Diagnosis Project
 
 **Topic:** Evaluation and Selection of Classification and Segmentation Datasets
+**Status:** DRAFT v1. Items marked TBD or unverified will be revised after the prototype (Sprint 2).
 
 ---
 
@@ -10,14 +11,14 @@ We have selected **NIH ChestX-ray14** as our primary classification benchmark an
 ---
 
 ## Three Reasons for the Decision
-1. **Unrestricted Legal and Commercial Freedom:** NIH ChestX-ray14 and MSD are distributed under open/public domain terms (CC BY-SA 4.0), removing the non-commercial and redistribution barriers inherent in alternative datasets like CheXpert.
+1. **Unrestricted Legal and Commercial Freedom:** NIH ChestX-ray14 is unrestricted  public domain hosted by NIH CLinical Centre and MSD is distributed under open domain terms (CC BY-SA 4.0), removing the non-commercial and redistribution barriers inherent in alternative datasets like CheXpert.
 2. **Streamlined Training Workflow:** Direct public access avoids credentialed gateway bottlenecks, and the manageable footprint (~42 GB for NIH vs. ~440 GB for CheXpert full resolution) fits local storage limitations.
 3. **Loss Function Compatibility:** NIH ChestX-ray14 uses strict binary labels (0 and 1) without uncertainty labels (-1), allowing direct application of standard Binary Cross-Entropy (BCE) loss without custom mapping heuristics.
 
 ---
 
 ## Top Three Risks
-1. **Prevalence Shift via Rare-Positive Anchoring:** Oversampling rare classes (<1% prevalence) in our 15,000-image local development subset shifts base probability distributions, requiring threshold-independent ranking metrics (AUROC/AUPRC) locally and recalibration during cloud training.
+1. **Prevalence Shift via Rare-Positive Anchoring:** Oversampling rare classes (<1% prevalence) in our 15,000-image local development subset shifts base probability distributions, requiring threshold-independent ranking metrics (AUROC) locally and recalibration during cloud training.
 2. **Synthetic DICOM Geometry & Voxel Spacing Loss:** Translating NIfTI affine matrices into custom DICOM headers risks spatial distortion or axis inversion, requiring strict programmatic parsing via `nibabel` and round-trip verification tests.
 3. **WSL Memory Exhaustion (OOM):** The 3.8 GiB WSL RAM ceiling risks out-of-memory crashes when handling volumetric scans or Dockerized Orthanc containers, requiring lazy memory mapping, single-worker data loaders, and storage allocation on Drive D:.
 
@@ -88,7 +89,7 @@ To select the primary dataset for thoracic disease classification, we evaluated 
 
 * **Patient Cohort:** 2,633 3D volumetric scans across 10 distinct anatomical tasks.
 * **Labels:** 3D volumetric masks with voxel values marked as 1 for the target organ and 0 for the background.
-* **Dimensions:** 3D volumetric scans with typical axial dimensions around 512 x 512 x Z (Z ranges from 31 to 168).
+* **Dimensions:** 3D volumetric scans with typical axial dimensions around 512 x 512 x Z (*unverified*)
 * **Dataset Size:** ~76 GB total; scoped down locally to **Task 09 Spleen (~1.6 GB)** and **Task 02 Heart (~0.4 GB)**.
 * **Data Format:** Formatted as compressed Neuroimaging Informatics Technology Initiative (NIfTI) files (`.nii.gz`).
 * **Scoped Tasks & Modalities:**
@@ -115,7 +116,7 @@ To select the primary dataset for thoracic disease classification, we evaluated 
 ### 3.2 Compute Constraints
 Operating under local resource limits (Drive D: 86.7 GB free, Drive C: 6 GB free, 8 GB RAM with 3.8 GiB visible to WSL, no local GPU) alongside a remote Kaggle Tesla T4 GPU:
 1. **Downsampled Data Subsets:**
-   * **Classification Subset:** Utilize a patient-stratified subset of 15,000 images from NIH ChestX-ray14 via Rare-Positive Anchoring to preserve rare class support while maintaining patient-level isolation. Rather than uniform random sampling—which reduces the rarest class (*Hernia*, ~0.20% prevalence) to <10 positive test images—we apply **Rare-Positive Anchoring**: patients containing rare pathologies (<1% dataset prevalence: *Hernia, Pneumonia, Fibrosis, Edema, Emphysema*) are sampled at a higher retention floor to guarantee greater than 30 positive scans per class in the validation and test splits, while the remaining quota up to 15,000 images is sampled via **Multi-Label Iterative Stratification** (`scikit-multilearn`) at the patient level.
+   * **Classification Subset:** Utilize a patient-stratified subset of 15,000 images from NIH ChestX-ray14 via Rare-Positive Anchoring to preserve rare class support while maintaining patient-level isolation. Rather than uniform random sampling—which reduces the rarest class (*Hernia*, ~0.20% prevalence) to <10 positive test images—we apply **Rare-Positive Anchoring**: patients containing rare pathologies (<1% dataset prevalence) are sampled at a higher retention floor to guarantee greater than certain number (to be set after counting pateints per label *TBD*) of  positive scans per class in the validation and test splits, while the remaining quota up to 15,000 images is sampled via **Multi-Label Iterative Stratification** at the patient level.
    * **Segmentation Subset:** Restrict downloads strictly to **Task 09 Spleen** and **Task 02 Heart** to conserve local storage. **Task 06 Lung** is not considered as fallback even though its more related to chest because it poses a problem of *tiny target in a large background* as the CT Scans have a large background and lung tumor is small so downsampling can vanish the target. Also While the Spleen dataset stays relatively consistent in slice counts, the Lung dataset has wildly varying dimensions.
 2. **Hybrid Cloud Training:** Develop and debug pipelines locally using CPU-only PyTorch builds, executing heavy training jobs on Kaggle Tesla T4 GPUs.
 
@@ -142,10 +143,8 @@ We select the **NIH ChestX-ray14** dataset over CheXpert because:
 | **Prevalence Shift via Rare-Positive Anchoring** | Artificially boosting rare disease representation in the local subset shifts base probability distributions away from the full dataset, potentially miscalibrating model outputs. | Medium | Rely on threshold-independent ranking metrics (AUROC) locally; perform temperature scaling and bias recalibration on the natural distribution during full cloud training. |
 | **3D Geometry & Voxel Spacing Loss in DICOM Conversion** | Translating NIfTI affine matrices into custom DICOM headers can cause coordinate inversions or spatial distortion. | High | Programmatically parse 4x4 affine matrices using `nibabel` to write valid spatial geometry tags; execute round-trip validation tests. |
 | **WSL Memory Overload (OOM)** | Low WSL RAM ceiling (3.8 GiB) risks out-of-memory crashes when loading full 3D volumes or local Orthanc Docker containers. | High | Set `num_workers=0` or `1` in PyTorch DataLoaders, employ memory-mapped NIfTI reading proxies, and host all container images on Drive D:. |
-| **8-Bit Dynamic Range Loss in NIH ChestX-ray14** | NIH ChestX-ray14 images were rescaled from native 12–16 bit clinical DICOMs down to 8-bit (0–255) PNGs [1, p. 2099]. Wrapping them back into DICOM format does not recover the original clinical Window Center/Width dynamic range[cite: 2]. | Medium | Configure the `pydicom` ingestion pipeline to write 8-bit unsigned integer (`BitsAllocated=8`, `PhotometricInterpretation=MONOCHROME2`) headers and normalize model inputs consistently to `[0.0, 1.0]` across both local and cloud pipelines. |
-| **Noisy Test Evaluation on NLP Ground Truth** | Because NIH ChestX-ray14 test labels are NLP-derived rather than radiologist-adjudicated [1, p. 2098–2099; 2, p. 592], test AUROC ceilings may reflect NLP parser quirks rather than true clinical diagnostic accuracy[cite: 2]. | Medium | Report 95% patient-clustered bootstrap confidence intervals alongside per-class AUPRC, and perform qualitative visual sanity checks (e.g., Grad-CAM heatmaps against the 984 bounding-box annotations provided in NIH ChestX-ray14 [1, p. 2099, 2101]). |
-| **8-Bit Dynamic Range Loss in NIH ChestX-ray14** | NIH ChestX-ray14 images were rescaled from native 12–16 bit clinical DICOMs down to 8-bit (0–255) PNGs [1, p. 2099]. Wrapping them back into DICOM format does not recover the original clinical Window Center/Width dynamic range[cite: 2]. | Medium | Configure the `pydicom` ingestion pipeline to write 8-bit unsigned integer (`BitsAllocated=8`, `PhotometricInterpretation=MONOCHROME2`) headers and normalize model inputs consistently to `[0.0, 1.0]` across both local and cloud pipelines. |
-| **Noisy Test Evaluation on NLP Ground Truth** | Because NIH ChestX-ray14 test labels are NLP-derived rather than radiologist-adjudicated [1, p. 2098–2099; 2, p. 592], test AUROC ceilings may reflect NLP parser quirks rather than true clinical diagnostic accuracy[cite: 2]. | Medium | Report 95% patient-clustered bootstrap confidence intervals alongside per-class AUPRC, and perform qualitative visual sanity checks (e.g., Grad-CAM heatmaps against the 984 bounding-box annotations provided in NIH ChestX-ray14 [1, p. 2099, 2101]). |
+| **8-Bit Dynamic Range Loss in NIH ChestX-ray14** | NIH ChestX-ray14 images were rescaled from native 12–16 bit clinical DICOMs down to 8-bit (0–255) PNGs . Wrapping them back into DICOM format does not recover the original clinical Window Center/Width dynamic range. | Medium | Configure the `pydicom` ingestion pipeline to write 8-bit unsigned integer (`BitsAllocated=8`, `PhotometricInterpretation=MONOCHROME2`) headers and normalize model inputs consistently to `[0.0, 1.0]` across both local and cloud pipelines. |
+| **Noisy Test Evaluation on NLP Ground Truth** | Because NIH ChestX-ray14 test labels are NLP-derived rather than radiologist-adjudicated , test AUROC ceilings may reflect NLP parser quirks rather than true clinical diagnostic accuracy. | Medium | Report 95% patient-clustered bootstrap confidence intervals alongside per-class AUPRC, and perform qualitative visual sanity checks (e.g., Grad-CAM heatmaps against the 984 bounding-box annotations provided in NIH ChestX-ray14 ). |
 
 ---
 
