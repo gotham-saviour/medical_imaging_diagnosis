@@ -9,4 +9,3 @@ torchvision==0.29.1
 scikit-learn
 pillow
 PyYAML
-PyQt6

@@ -116,7 +116,7 @@ def main(out_dir: str | Path | None = None) -> None:
     else:
         out_dir = Path(out_dir)
 
-    out_path = out_dir if out_dir.is_absolute else REPO_ROOT / out_dir
+    out_path = REPO_ROOT / out_dir
 
     ## Loading the Dataset
     ds = load_sample()
