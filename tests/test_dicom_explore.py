@@ -241,8 +241,8 @@ def test_count_outside_window() -> None:
 ## ---------------------------------------------------------------------
 
 
-def test_sample_instensity_report() -> None:
-    # 12.a: Verifyting number of unique pixel values in Raw Image
+def test_sample_intensity_report() -> None:
+    # 12.a: Verifying number of unique pixel values in Raw Image
     ds = de.load_sample()
 
     unique_values = de.distinct_pixel_values(ds.pixel_array)
@@ -256,7 +256,7 @@ def test_sample_instensity_report() -> None:
     unique_values_windowed = de.distinct_pixel_values(windowed_pixels)
     assert unique_values_windowed == 204
 
-    # 12.c:Veryfying  Number of Pixels CLipped during Window Scaling of Sample
+    # 12.c:Verifying  Number of Pixels Clipped during Window Scaling of Sample
     ds = de.load_sample()
     scaled_pixels = de.to_hounsfield_or_stored(ds)
     window_center, window_width = de.get_window(ds, scaled_pixels)

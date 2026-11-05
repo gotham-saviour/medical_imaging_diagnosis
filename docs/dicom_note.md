@@ -71,17 +71,18 @@ Our initial dataset memo warned that pre-converting 12-bit/16-bit medical scans 
 **The above values are calculated for this (64x64) sample, this percentage isn't the General Rate.**
 
 **NIfTI-to-DICOM 3D Geometry Risk (*Still Unverified*):**
-For our 3D segmentation dataset (Medical Segmentation Decathlon, distributed in NIfTI `.nii.gz` format), converting between 3D NIfTI volumes and 2D DICOM slice series carries a high risk of spatial coordinate mismatch (**still unverified** in our pipeline). Specifically, NIfTI uses a single $4 \times 4$ affine transformation matrix (often in `RAS+` orientation), whereas DICOM defines 3D geometry slice-by-slice using `ImagePositionPatient` `(0020,0032)`(**confirmed**), `ImageOrientationPatient` `(0020,0037)`(**confirmed**) (in `LPS+` coordinates), and `PixelSpacing`. Until we write a round-trip geometry test in Sprint 3, any discrepancies in slice ordering, affine orientation (`LPS` vs. `RAS`), or oblique gantry tilt during NIfTI-to-DICOM conversion remain **still unverified**.
+For our 3D segmentation dataset (Medical Segmentation Decathlon, distributed in NIfTI `.nii.gz` format), converting between 3D NIfTI volumes and 2D DICOM slice series carries a high risk of spatial coordinate mismatch (**still unverified** in our pipeline). Specifically, NIfTI uses a single $4 \times 4$ affine transformation matrix (often in `RAS+` orientation), whereas DICOM defines 3D geometry slice-by-slice using `ImagePositionPatient` `(0020,0032)`(`[-83.9063, -91.2, 6.6406]`,**confirmed**), `ImageOrientationPatient` `(0020,0037)`(`[1, 0, 0, 0, 1, 0]`,**confirmed**) (in `LPS+` coordinates), and `PixelSpacing`.
+Until we write a round-trip geometry test in Sprint 3, any discrepancies in slice ordering, affine orientation (`LPS` vs. `RAS`), or oblique gantry tilt during NIfTI-to-DICOM conversion remain **still unverified**.
 
 ## 5. Claim Ledger
 
 | Claim | Tag | Test |
 | ----- | ----- | -----|
-| Header Values and UIDs | **confirmed** |  test_print_tags
-| Unique Pixel Count Raw Image: `1128` | **confirmed** | test_distinct_pixel_values
-| Unique Pixel Count Windowed Image: `204` | **confirmed** | test_distinct_pixel_values
-| Unique Pixel Count No Clipping: 225 | **confirmed** | test_scaled_quantization
-| Number of Pixels Clipped by Window Clipping: 222 | **confirmed** | count_outside_window
+| Header Values, UIDs and Geometry Tags | **confirmed** |  test_print_tags
+| Unique Pixel Count Raw Image: `1128` | **confirmed** | test_sample_intensity_report`(12.a)`
+| Unique Pixel Count Windowed Image: `204` | **confirmed** | test_sample_intensity_report`(12.b)`
+| Number of Pixels Clipped by Window Clipping: 222 | **confirmed** | test_sample_intensity_report`(12.c)`
+| Unique Pixel Count No Clipping: 225 | **confirmed** | test_sample_intensity_report`(12.d)`
 | Pixel Spacing order | **unverified** | -- |
 | DICOM PS3.15 Annex E — Attribute Confidentiality Profiles | **unverified** | -- |
 | NIH Images are 8 bit | **unverified** | -- |
