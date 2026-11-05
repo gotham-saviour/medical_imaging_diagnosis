@@ -125,7 +125,19 @@ def test_save_fig(tmp_path: Path) -> None:
 def test_print_tags(capsys: pytest.CaptureFixture[str]) -> None:
 
     ds = de.load_sample()
-    tags_to_check = ["PatientBirthDate", "InstitutionName", "RescaleSlope"]
+    tags_to_check = [
+        "PatientID",
+        "PatientBirthDate",
+        "InstitutionName",
+        "RescaleSlope",
+        "StudyTime",
+        "Manufacturer",
+        "DeviceSerialNumber",
+        "ImagePositionPatient",
+        "StudyInstanceUID",
+        "SeriesInstanceUID",
+        "SOPInstanceUID",
+    ]
 
     de.print_tags(ds, tags_to_check)
     captured = capsys.readouterr().out
@@ -135,11 +147,23 @@ def test_print_tags(capsys: pytest.CaptureFixture[str]) -> None:
     for line in captured.strip().splitlines():
         lines[line.split(":")[0].strip()] = line.split(":")[1].strip()
 
+    assert lines["StudyInstanceUID"] == "1.3.6.1.4.1.5962.1.2.4.20040826185059.5457 UID"
+    assert (
+        lines["SeriesInstanceUID"] == "1.3.6.1.4.1.5962.1.3.4.1.20040826185059.5457 UID"
+    )
+    assert (
+        lines["SOPInstanceUID"] == "1.3.6.1.4.1.5962.1.1.4.1.1.20040826185059.5457 UID"
+    )
+    assert lines["PatientID"] == "4MR1 str"
     assert lines["PatientBirthDate"] == "[Empty String]"
     assert (
         lines["InstitutionName"] == "TOSHIBA str"
     )  ## we have Value and Value's data type
     assert lines["RescaleSlope"] == "Attribute Not Available"
+    assert lines["StudyTime"] == "185059 str"
+    assert lines["Manufacturer"] == "TOSHIBA_MEC str"
+    assert lines["DeviceSerialNumber"] == "-0000200 str"
+    assert lines["ImagePositionPatient"] == "[-83.9063, -91.2000, 6.6406] MultiValue"
 
 
 ## ---------------------------------------------------------------------
@@ -170,3 +194,82 @@ def test_main(tmp_path: Path) -> None:
 def test_repo_root_guard() -> None:
 
     assert (de.REPO_ROOT / "pyproject.toml").exists()
+
+
+## ---------------------------------------------------------------------
+# TEST 9 -> distinct_pixel_values(image)
+## ---------------------------------------------------------------------
+
+
+def test_distinct_pixel_values() -> None:
+
+    dummy_array = np.array([1, 4, 5, 5])
+    unique_values = de.distinct_pixel_values(dummy_array)
+    de.load_sample()
+    assert unique_values == 3
+
+
+## ---------------------------------------------------------------------
+# TEST 10 -> scaled_quantization(image)
+## ---------------------------------------------------------------------
+
+
+def test_scaled_quantization() -> None:
+
+    ds = de.load_sample()
+    raw_pixels = ds.pixel_array
+    quantized_8bit = de.scaled_quantization(raw_pixels)
+    unique_pixels = np.unique_values(quantized_8bit)
+
+    assert len(unique_pixels) == 225
+
+
+## ---------------------------------------------------------------------
+# TEST 11 -> count_outside_window()
+## ---------------------------------------------------------------------
+
+
+def test_count_outside_window() -> None:
+
+    dummy_image = np.arange(-250, 250).reshape(25, 20)
+    values_count_outside_window = de.count_outside_window(dummy_image, 0.0, 400)
+    assert values_count_outside_window == (50, 49)
+
+
+## ---------------------------------------------------------------------
+# TEST 12 -> Sample Intensity Claims Verification
+## ---------------------------------------------------------------------
+
+
+def test_sample_intensity_report() -> None:
+    # 12.a: Verifying number of unique pixel values in Raw Image
+    ds = de.load_sample()
+
+    unique_values = de.distinct_pixel_values(ds.pixel_array)
+    assert unique_values == 1128
+
+    # 12.b: Verifying Unique Pixel Values after windowing in Sample
+    ds = de.load_sample()
+    scaled_pixels = de.to_hounsfield_or_stored(ds)
+    window_center, window_width = de.get_window(ds, scaled_pixels)
+    windowed_pixels = de.apply_window(scaled_pixels, window_center, window_width)
+    unique_values_windowed = de.distinct_pixel_values(windowed_pixels)
+    assert unique_values_windowed == 204
+
+    # 12.c:Verifying  Number of Pixels Clipped during Window Scaling of Sample
+    ds = de.load_sample()
+    scaled_pixels = de.to_hounsfield_or_stored(ds)
+    window_center, window_width = de.get_window(ds, scaled_pixels)
+    pixels_clipped = sum(
+        de.count_outside_window(scaled_pixels, window_center, window_width)
+    )
+
+    assert pixels_clipped == 222
+
+    # 12.d : Verifying unique pixel count when Sample is 8-bit quantized with no Clipping
+    ds = de.load_sample()
+    scaled_pixels = de.to_hounsfield_or_stored(ds)
+    quantized_8_bit_image = de.scaled_quantization(scaled_pixels)
+    unique_pixels_quantized = de.distinct_pixel_values(quantized_8_bit_image)
+
+    assert unique_pixels_quantized == 225

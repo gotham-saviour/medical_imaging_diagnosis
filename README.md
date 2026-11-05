@@ -47,5 +47,10 @@ pre-commit install
 ```bash
 pytest
 ```
+6. **Run the Script to understand DICOM**
+
+```bash
+python -m src/data_pipeline/dicom_explore.py
+```
 
 ## **NOTICE**: For Education only, not Clinical Use

@@ -107,6 +107,45 @@ def save_fig(image: np.ndarray, title: str, out_path: Path) -> None:
     plt.close(fig)
 
 
+def distinct_pixel_values(image: np.ndarray) -> int:
+    """Helper function to retrieve the Number of Distinct Pixel Values in an Image"""
+    unique_values = np.unique_values(image)
+    return len(unique_values)
+
+
+def scaled_quantization(image: np.ndarray) -> np.ndarray:
+    """Helper Function Converts Image from Full range to 8 bit with no Clipping"""
+    p_max = image.max()
+    p_min = image.min()
+
+    if p_max == p_min:
+        raise ValueError("The Minimum and Maximum Intensities cannt be equal")
+
+    full_range_normalized = (image - p_min) / (p_max - p_min)
+
+    full_range_8_bit = (full_range_normalized * 255).astype(np.uint8)
+
+    return full_range_8_bit
+
+
+def count_outside_window(
+    image: np.ndarray, center: float, width: float
+) -> tuple[int, int]:
+    """Getting the Count of Pixels Values which are clipped during Window Clipping"""
+
+    if width <= 0.0:
+        raise ValueError(f"Window Width must be Positive, got {width}")
+
+    else:
+        upper_bound = center + (width / 2)
+        lower_bound = center - (width / 2)
+
+        values_above_upper_bound = int((image > upper_bound).sum())
+        values_below_lower_bound = int((image < lower_bound).sum())
+
+        return (values_below_lower_bound, values_above_upper_bound)
+
+
 def main(out_dir: str | Path | None = None) -> None:
 
     ## Check if the Output path is Available
@@ -135,6 +174,7 @@ def main(out_dir: str | Path | None = None) -> None:
         "Columns",
         "RescaleSlope",
         "RescaleIntercept",
+        "BurnedInAnnotation",
     ]
 
     # DICOM data model is structured in a strict hierarchical level
@@ -154,6 +194,17 @@ def main(out_dir: str | Path | None = None) -> None:
         "ReferringPhysicianName",
         "AccessionNumber",
         "StudyDate",
+        "StudyTime",
+        "Manufacturer",
+        "DeviceSerialNumber",
+    ]
+
+    ## Geometry of DICOM Slice
+
+    geometrical_tags = [
+        "ImagePositionPatient",
+        "ImageOrientationPatient",
+        "SliceThickness",
     ]
 
     print("---------- DICOM Metadata ----------")
@@ -167,6 +218,16 @@ def main(out_dir: str | Path | None = None) -> None:
     print("---------- PHI Tags ---------------")
 
     print_tags(ds, phi_tags)
+
+    print("---------- Geometry Tags ---------------")
+
+    print_tags(ds, geometrical_tags)
+
+    ## Number of Unique Pixel Values in Raw Image
+
+    unique_val_raw = distinct_pixel_values(ds.pixel_array)
+
+    print(f"\nDistinct Intensity Values before Windowing : {unique_val_raw}")
 
     ## Re-Scaling the Raw Pixels to Hounsfield Units
 
@@ -182,6 +243,27 @@ def main(out_dir: str | Path | None = None) -> None:
 
     windowed_image = apply_window(
         scaled_pixels=scaled_pixels, center=window_center, width=window_width
+    )
+
+    unique_val_windowed = distinct_pixel_values(windowed_image)
+
+    print(f"Distinct Intensity Values after Windowing : {unique_val_windowed}")
+
+    ## Number of Pixels Clipped During Window scaling
+    ## The Pixel Intensities above Value 1400 were clipped
+
+    clipped_pixels = sum(
+        count_outside_window(scaled_pixels, window_center, window_width)
+    )
+
+    print(f"The number of Pixels Clipped by Windowing: {clipped_pixels}")
+
+    ## The Number of Unique Values if converted to 8 bit with no clipping
+
+    full_range_8bit = scaled_quantization(scaled_pixels)
+
+    print(
+        f"Unique Pixel Values if 8-bit Quantization applied with no clipping: {len(np.unique_values(full_range_8bit))}"
     )
 
     ## Saving the Processed Image and the Raw Input Image
